@@ -1,1 +1,5 @@
 *.avi
+/lib
+/bin
+/include
+/pip-selfcheck.json
