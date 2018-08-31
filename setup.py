@@ -17,6 +17,6 @@ setup(
     author='Luca Capra',
     author_email='luca.capra@gmail.com',
     license='MIT',
-    packages=['webcam', 'mjpeg', 'video', 'cv2', 'opencv'],
+    packages=[],
     zip_safe=True,
 )
