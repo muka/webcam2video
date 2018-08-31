@@ -3,7 +3,7 @@
 import sys
 import cv2
 import argparse
-import mjpeg
+from webcam import mjpeg
 
 parser = argparse.ArgumentParser()
 parser.add_argument("url", help="MJPEG URL of the source to read from")
