@@ -28,7 +28,8 @@ out = cv2.VideoWriter(
     args.out,
     cv2.VideoWriter_fourcc(*'XVID'),
     30.0,
-    (640, 480))
+    (1920, 1080))
+
 
 while(source.isOpened()):
     ret, frame = source.read()

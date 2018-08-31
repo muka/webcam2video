@@ -1,40 +1,48 @@
 import cv2
 import numpy as np
 import urllib.request
-from collections import deque
 
 
 class MjpegDecoder:
-    def __init__(self, url, cache_length=30):
-        self.cache_length = cache_length
+    def __init__(self, url):
         self.url = url
-        self.cache = deque([], maxlen=cache_length)
+        self.boundary = None
+        self.stream = None
+
+    def open(self):
+        if not self.stream:
+            self.stream = urllib.request.urlopen(self.url)
+            self.boundary = b'--' + bytearray(
+                self.stream.info()['content-type'].split('=')[1], 'utf-8')
 
     def read(self):
-        if not len(self.cache):
-            return None
-        return self.cache.popleft()
+        self.open()
+        next = False
+        bytes = b''
+        while True:
+            bytes += self.stream.read(1024)
+            # seek boundary
+            bb = bytes.find(self.boundary)
+            if bb == -1:
+                continue
 
-    def clear(self):
-        return self.cache.clear()
+            jpg = []
+            if not next:
+                # remove frame headers (like content type, length, etc)
+                # headers end with a double carriage return
+                a = bytes.find(b'\r\n\r\n', bb)
+                bytes = bytes[a+4:]
+                next = True
+                continue
+            else:
+                jpg = bytes[:bb]
+                bytes[:bb]
+                next = False
 
-    async def open(self):
-        with urllib.request.urlopen(self.url) as stream:
-            bytes = b''
-            while True:
-                bytes += stream.read(1024)
-                a = bytes.find(b'\xff\xd8')
-                b = bytes.find(b'\xff\xd9')
-                if a != -1 and b != -1:
-                    jpg = bytes[a:b+2]
-                    bytes = bytes[b+2:]
-                    try:
-                        if not len(jpg):
-                            continue
-                        frame = cv2.imdecode(
-                            np.fromstring(jpg, dtype=np.uint8),
-                            cv2.IMREAD_COLOR)
-                        self.cache.append(frame)
-                    except ValueError as e:
-                        print(e)
-                        continue
+            if len(jpg):
+                frame = cv2.imdecode(
+                    np.fromstring(jpg, dtype=np.uint8),
+                    cv2.IMREAD_COLOR)
+
+                if frame is not None and len(frame):
+                    return frame
