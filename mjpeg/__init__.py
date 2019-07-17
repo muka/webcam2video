@@ -4,11 +4,11 @@ import urllib.request
 
 
 class MjpegDecoder:
-    def __init__(self, url):
+    def __init__(self, url, bytes_step=512):
         self.url = url
         self.boundary = None
         self.stream = None
-        self.bytes_step = 512
+        self.bytes_step = bytes_step
 
     def open(self):
         if not self.stream:
