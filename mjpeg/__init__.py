@@ -8,6 +8,7 @@ class MjpegDecoder:
         self.url = url
         self.boundary = None
         self.stream = None
+        self.bytes_step = 512
 
     def open(self):
         if not self.stream:
@@ -20,7 +21,7 @@ class MjpegDecoder:
         next = False
         bytes = b''
         while True:
-            bytes += self.stream.read(1024)
+            bytes += self.stream.read(self.bytes_step)
             # seek boundary
             bb = bytes.find(self.boundary)
             if bb == -1:
