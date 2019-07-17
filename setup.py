@@ -17,6 +17,6 @@ setup(
     author='Luca Capra',
     author_email='luca.capra@gmail.com',
     license='MIT',
-    packages=[],
+    packages=['mjpeg'],
     zip_safe=True,
 )
