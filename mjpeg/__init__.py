@@ -6,9 +6,17 @@ import queue
 
 
 def _read(asyncDecoder):
+
     decoder = MjpegDecoder(asyncDecoder.url, asyncDecoder.bytes_step)
+
     while not asyncDecoder.closed:
+
+        if asyncDecoder.max_frames > 0:
+            while asyncDecoder.queue.qsize() > asyncDecoder.max_frames:
+                asyncDecoder.queue.get()
+
         asyncDecoder.queue.put(decoder.read())
+
     decoder.close()
 
 
@@ -16,7 +24,8 @@ class MjpegDecoderAsync:
     def __init__(self, url, bytes_step=512, max_frames=0):
         self.url = url
         self.bytes_step = bytes_step
-        self.queue = queue.Queue(maxsize=max_frames)
+        self.max_frames = max_frames
+        self.queue = queue.Queue()
         self.closed = False
         self.thread = None
 

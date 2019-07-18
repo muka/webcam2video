@@ -19,6 +19,8 @@ def main():
     decoder = mjpeg.MjpegDecoderAsync(args.url)
     while True:
         frame = decoder.read()
+        if frame is None:
+            continue
         if args.flip:
             frame = cv2.flip(frame, 0)
         cv2.imshow('frame', frame)
