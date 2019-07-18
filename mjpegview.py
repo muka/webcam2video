@@ -14,8 +14,9 @@ if not args.url:
     print("url is required")
     sys.exit(1)
 
+
 def main():
-    decoder = mjpeg.MjpegDecoder(args.url)
+    decoder = mjpeg.MjpegDecoderAsync(args.url)
     while True:
         frame = decoder.read()
         if args.flip:
