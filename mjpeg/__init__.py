@@ -31,8 +31,11 @@ class MjpegDecoderAsync:
         self.thread = None
         self.cache_thread = None
 
+    def isOpened(self):
+        return self.thread is not None
+
     def open(self):
-        if not self.thread:
+        if not self.isOpened:
             self.thread = threading.Thread(
                 target=_read,
                 args=(self,)
@@ -48,7 +51,7 @@ class MjpegDecoderAsync:
 
     def read(self):
         self.open()
-        return self.queue.get(block=True)
+        return True, self.queue.get(block=True)
 
     def close(self):
         self.closed = True
@@ -65,6 +68,9 @@ class MjpegDecoder:
         self.boundary = None
         self.stream = None
         self.bytes_step = bytes_step
+
+    def isOpened(self):
+        return self.stream is not None
 
     def open(self):
         if not self.stream:
@@ -106,4 +112,4 @@ class MjpegDecoder:
                     cv2.IMREAD_COLOR)
 
                 if frame is not None and len(frame):
-                    return frame
+                    return True, frame
