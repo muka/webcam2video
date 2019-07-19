@@ -5,15 +5,17 @@ import threading
 import queue
 
 
+def _clear_cache(asyncDecoder):
+    while not asyncDecoder.closed:
+        while asyncDecoder.queue.qsize() > asyncDecoder.max_frames:
+            asyncDecoder.queue.get()
+
+
 def _read(asyncDecoder):
 
     decoder = MjpegDecoder(asyncDecoder.url, asyncDecoder.bytes_step)
 
     while not asyncDecoder.closed:
-
-        if asyncDecoder.max_frames > 0:
-            while asyncDecoder.queue.qsize() > asyncDecoder.max_frames:
-                asyncDecoder.queue.get()
 
         asyncDecoder.queue.put(decoder.read())
 
@@ -28,6 +30,7 @@ class MjpegDecoderAsync:
         self.queue = queue.Queue()
         self.closed = False
         self.thread = None
+        self.cache_thread = None
 
     def open(self):
         if not self.thread:
@@ -37,6 +40,13 @@ class MjpegDecoderAsync:
             )
             self.thread.start()
 
+            if self.max_frames > 0:
+                self.cache_thread = threading.Thread(
+                    target=_clear_cache,
+                    args=(self,)
+                )
+                self.cache_thread.start()
+
     def read(self):
         self.open()
         return self.queue.get(block=True)
@@ -45,6 +55,9 @@ class MjpegDecoderAsync:
         self.closed = True
         self.thread.join()
         self.thread = None
+        if self.cache_thread:
+            self.cache_thread.join()
+            self.cache_thread = None
 
 
 class MjpegDecoder:
