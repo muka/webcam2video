@@ -5,27 +5,25 @@ import threading
 import queue
 
 
-def _clear_cache(queue, closed, max_frames):
-    while not closed.is_set():
-        while queue.qsize() > max_frames:
-            queue.get(block=False)
-
-
 def _read(queue, closed, url, bytes_step):
     cap = MjpegDecoder(url, bytes_step)
     while cap.isOpened() and not closed.is_set():
         ok, frame = cap.read()
         if ok:
-            queue.put(frame)
+            try:
+                queue.put(frame, block=False)
+            except queue.Full:
+                pass
+
     cap.release()
 
 
 class MjpegDecoderAsync:
-    def __init__(self, url, bytes_step=512, max_frames=0):
+    def __init__(self, url, bytes_step=None, max_frames=0):
         self.url = url
         self.bytes_step = bytes_step
         self.max_frames = max_frames
-        self.queue = queue.Queue()
+        self.queue = queue.Queue(max_frames)
         self.closed = threading.Event()
         self.thread = None
         self.cache_thread = None
@@ -42,23 +40,18 @@ class MjpegDecoderAsync:
             )
             self.thread.start()
 
-            if self.max_frames > 0:
-                self.cache_thread = threading.Thread(
-                    target=_clear_cache,
-                    args=(self.queue, self.closed, self.max_frames)
-                )
-                self.cache_thread.start()
-
     def read(self):
-        return True, self.queue.get(block=True)
+        try:
+            frame = self.queue.get(block=False)
+            return True, frame
+        except queue.Empty:
+            pass
+        return False, None
 
     def release(self):
         self.closed.set()
         self.thread.join()
         self.thread = None
-        if self.cache_thread:
-            self.cache_thread.join()
-            self.cache_thread = None
 
 
 class MjpegDecoder:
@@ -75,8 +68,12 @@ class MjpegDecoder:
     def open(self):
         if not self.isOpened():
             self.stream = urllib.request.urlopen(self.url)
-            self.boundary = b'\r\n--' + bytearray(
-                self.stream.info()['content-type'].split('=')[1], 'utf-8')
+            self.boundaries = [
+                b'\r\n--' + bytearray(
+                    self.stream.info()['content-type'].split('=')[1], 'utf-8'
+                ),
+                b"\r\n\r\n"
+            ]
 
     def release(self):
         self.stream.close()
@@ -85,26 +82,27 @@ class MjpegDecoder:
     def read(self):
         next = False
         bytes = b''
+        start_boundary, end_boundary = self.boundaries
         while True:
 
             bytes += self.stream.read(self.bytes_step)
 
             # seek boundary
-            bb = bytes.find(self.boundary)
-            if bb == -1:
+            end_image = bytes.find(end_boundary)
+            if end_image == -1:
                 continue
 
             jpg = None
             if not next:
                 # remove frame headers (like content type, length, etc)
                 # headers end with a double carriage return
-                a = bytes.find(b'\r\n\r\n', bb)
-                bytes = bytes[a+4:]
+                start_image = bytes.find(end_boundary, end_image)
+                bytes = bytes[start_image+len(end_boundary):]
                 next = True
                 continue
             else:
-                jpg = bytes[:bb]
-                bytes[:bb]
+                jpg = bytes[:end_image]
+                bytes[:end_image]
                 next = False
 
             if jpg is not None:
