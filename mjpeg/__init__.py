@@ -53,6 +53,9 @@ class MjpegDecoderAsync:
         self.open()
         return True, self.queue.get(block=True)
 
+    def release(self):
+        self.close()
+
     def close(self):
         self.closed = True
         self.thread.join()
@@ -77,6 +80,9 @@ class MjpegDecoder:
             self.stream = urllib.request.urlopen(self.url)
             self.boundary = b'--' + bytearray(
                 self.stream.info()['content-type'].split('=')[1], 'utf-8')
+
+    def release(self):
+        self.close()
 
     def close(self):
         self.stream.close()
