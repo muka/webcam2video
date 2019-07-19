@@ -55,7 +55,8 @@ class MjpegDecoderAsync:
 
     def release(self):
         self.closed.set()
-        self.thread.join()
+        if self.thread:
+            self.thread.join()
         self.thread = None
 
 
