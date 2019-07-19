@@ -106,6 +106,4 @@ class MjpegDecoder:
                     cv2.IMREAD_COLOR)
 
                 if frame is not None and len(frame):
-                    return True, frame
-
-            return False, None
+                    return frame
