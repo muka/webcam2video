@@ -16,7 +16,6 @@ def _read(asyncDecoder):
     decoder = MjpegDecoder(asyncDecoder.url, asyncDecoder.bytes_step)
 
     while not asyncDecoder.closed:
-
         asyncDecoder.queue.put(decoder.read())
 
     decoder.close()
@@ -107,4 +106,6 @@ class MjpegDecoder:
                     cv2.IMREAD_COLOR)
 
                 if frame is not None and len(frame):
-                    return frame
+                    return True, frame
+
+            return False, None
