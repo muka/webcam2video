@@ -51,7 +51,7 @@ class MjpegDecoderAsync:
 
     def read(self):
         self.open()
-        return [True, self.queue.get(block=True)]
+        return self.queue.get(block=True)
 
     def release(self):
         self.close()
