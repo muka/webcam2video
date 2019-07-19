@@ -16,7 +16,9 @@ def _read(asyncDecoder):
     decoder = MjpegDecoder(asyncDecoder.url, asyncDecoder.bytes_step)
 
     while not asyncDecoder.closed:
-        asyncDecoder.queue.put(decoder.read())
+        ok, frame = decoder.read()
+        if ok:
+            asyncDecoder.queue.put(frame)
 
     decoder.close()
 
@@ -51,7 +53,7 @@ class MjpegDecoderAsync:
 
     def read(self):
         self.open()
-        return self.queue.get(block=True)
+        return True, self.queue.get(block=True)
 
     def release(self):
         self.close()
@@ -66,7 +68,7 @@ class MjpegDecoderAsync:
 
 
 class MjpegDecoder:
-    def __init__(self, url, bytes_step=512):
+    def __init__(self, url, bytes_step=1024):
         self.url = url
         self.boundary = None
         self.stream = None
@@ -78,7 +80,7 @@ class MjpegDecoder:
     def open(self):
         if not self.isOpened():
             self.stream = urllib.request.urlopen(self.url)
-            self.boundary = b'--' + bytearray(
+            self.boundary = b'\r\n--' + bytearray(
                 self.stream.info()['content-type'].split('=')[1], 'utf-8')
 
     def release(self):
@@ -93,13 +95,15 @@ class MjpegDecoder:
         next = False
         bytes = b''
         while True:
+
             bytes += self.stream.read(self.bytes_step)
+
             # seek boundary
             bb = bytes.find(self.boundary)
             if bb == -1:
                 continue
 
-            jpg = []
+            jpg = None
             if not next:
                 # remove frame headers (like content type, length, etc)
                 # headers end with a double carriage return
@@ -112,7 +116,7 @@ class MjpegDecoder:
                 bytes[:bb]
                 next = False
 
-            if len(jpg):
+            if jpg is not None:
                 frame = cv2.imdecode(
                     np.fromstring(jpg, dtype=np.uint8),
                     cv2.IMREAD_COLOR)

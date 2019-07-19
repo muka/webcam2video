@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import sys
+import time
 import cv2
 import argparse
 import mjpeg
@@ -16,15 +17,21 @@ if not args.url:
 
 
 def main():
-    decoder = mjpeg.MjpegDecoderAsync(args.url)
-    while True:
-        frame = decoder.read()
+
+    cap = mjpeg.MjpegDecoderAsync(args.url)
+    cap.open()
+    while cap.isOpened():
+
+        ok, frame = cap.read()
         if frame is None:
-            continue
+            break
+
         if args.flip:
             frame = cv2.flip(frame, 0)
+
         cv2.imshow('frame', frame)
-        if cv2.waitKey(10) == 27:
+        if cv2.waitKey(1) == ord("q"):
+            cap.release()
             break
     cv2.destroyAllWindows()
 
