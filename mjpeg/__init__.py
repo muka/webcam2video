@@ -1,3 +1,4 @@
+import time
 import cv2
 import numpy as np
 import urllib.request
@@ -19,7 +20,7 @@ def _read(queue, closed, url, bytes_step):
 
 
 class MjpegDecoderAsync:
-    def __init__(self, url, bytes_step=None, max_frames=0):
+    def __init__(self, url, bytes_step=None, max_frames=0, max_read_tries=10):
         self.url = url
         self.bytes_step = bytes_step
         self.max_frames = max_frames
@@ -27,6 +28,7 @@ class MjpegDecoderAsync:
         self.closed = threading.Event()
         self.thread = None
         self.cache_thread = None
+        self.max_read_tries = max_read_tries
         self.open()
 
     def isOpened(self):
@@ -46,11 +48,16 @@ class MjpegDecoderAsync:
             self.thread.start()
 
     def read(self):
-        try:
-            frame = self.queue.get(block=False)
-            return True, frame
-        except Empty:
-            pass
+        retry = 0
+        while retry < self.max_read_tries:
+            try:
+                frame = self.queue.get(block=False)
+                return True, frame
+            except Empty:
+                pass
+            retry += 1
+            time.sleep(0.1)
+
         return False, None
 
     def release(self):
