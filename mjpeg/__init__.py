@@ -35,7 +35,7 @@ class MjpegDecoderAsync:
         return self.thread is not None
 
     def open(self):
-        if not self.isOpened:
+        if not self.isOpened():
             self.thread = threading.Thread(
                 target=_read,
                 args=(self,)
@@ -76,7 +76,7 @@ class MjpegDecoder:
         return self.stream is not None
 
     def open(self):
-        if not self.stream:
+        if not self.isOpened():
             self.stream = urllib.request.urlopen(self.url)
             self.boundary = b'--' + bytearray(
                 self.stream.info()['content-type'].split('=')[1], 'utf-8')
