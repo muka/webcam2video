@@ -2,17 +2,17 @@ import cv2
 import numpy as np
 import urllib.request
 import threading
-import queue
+from queue import Queue, Full, Empty
 
 
-def _read(q, closed, url, bytes_step):
+def _read(queue, closed, url, bytes_step):
     cap = MjpegDecoder(url, bytes_step)
     while cap.isOpened() and not closed.is_set():
         ok, frame = cap.read()
         if ok:
             try:
-                q.put(frame, block=False)
-            except queue.Full:
+                queue.put(frame, block=False)
+            except Full:
                 pass
 
     cap.release()
@@ -23,7 +23,7 @@ class MjpegDecoderAsync:
         self.url = url
         self.bytes_step = bytes_step
         self.max_frames = max_frames
-        self.queue = queue.Queue(max_frames)
+        self.queue = Queue(max_frames)
         self.closed = threading.Event()
         self.thread = None
         self.cache_thread = None
@@ -49,7 +49,7 @@ class MjpegDecoderAsync:
         try:
             frame = self.queue.get(block=False)
             return True, frame
-        except queue.Empty:
+        except Empty:
             pass
         return False, None
 
