@@ -5,22 +5,19 @@ import threading
 import queue
 
 
-def _clear_cache(asyncDecoder):
-    while not asyncDecoder.closed:
-        while asyncDecoder.queue.qsize() > asyncDecoder.max_frames:
-            asyncDecoder.queue.get()
+def _clear_cache(queue, closed, max_frames):
+    while not closed.is_set():
+        while queue.qsize() > max_frames:
+            queue.get(block=False)
 
 
-def _read(asyncDecoder):
-
-    decoder = MjpegDecoder(asyncDecoder.url, asyncDecoder.bytes_step)
-
-    while not asyncDecoder.closed:
-        ok, frame = decoder.read()
+def _read(queue, closed, url, bytes_step):
+    cap = MjpegDecoder(url, bytes_step)
+    while cap.isOpened() and not closed.is_set():
+        ok, frame = cap.read()
         if ok:
-            asyncDecoder.queue.put(frame)
-
-    decoder.close()
+            queue.put(frame)
+    cap.release()
 
 
 class MjpegDecoderAsync:
@@ -29,9 +26,10 @@ class MjpegDecoderAsync:
         self.bytes_step = bytes_step
         self.max_frames = max_frames
         self.queue = queue.Queue()
-        self.closed = False
+        self.closed = threading.Event()
         self.thread = None
         self.cache_thread = None
+        self.open()
 
     def isOpened(self):
         return self.thread is not None
@@ -40,26 +38,22 @@ class MjpegDecoderAsync:
         if not self.isOpened():
             self.thread = threading.Thread(
                 target=_read,
-                args=(self,)
+                args=(self.queue, self.closed, self.url, self.bytes_step)
             )
             self.thread.start()
 
             if self.max_frames > 0:
                 self.cache_thread = threading.Thread(
                     target=_clear_cache,
-                    args=(self,)
+                    args=(self.queue, self.closed, self.max_frames)
                 )
                 self.cache_thread.start()
 
     def read(self):
-        self.open()
         return True, self.queue.get(block=True)
 
     def release(self):
-        self.close()
-
-    def close(self):
-        self.closed = True
+        self.closed.set()
         self.thread.join()
         self.thread = None
         if self.cache_thread:
@@ -73,6 +67,7 @@ class MjpegDecoder:
         self.boundary = None
         self.stream = None
         self.bytes_step = bytes_step
+        self.open()
 
     def isOpened(self):
         return self.stream is not None
@@ -84,14 +79,10 @@ class MjpegDecoder:
                 self.stream.info()['content-type'].split('=')[1], 'utf-8')
 
     def release(self):
-        self.close()
-
-    def close(self):
         self.stream.close()
         self.stream = None
 
     def read(self):
-        self.open()
         next = False
         bytes = b''
         while True:
