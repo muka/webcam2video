@@ -51,7 +51,7 @@ class MjpegDecoderAsync:
 
     def read(self):
         self.open()
-        return True, self.queue.get(block=True)
+        return [True, self.queue.get(block=True)]
 
     def release(self):
         self.close()
@@ -118,4 +118,4 @@ class MjpegDecoder:
                     cv2.IMREAD_COLOR)
 
                 if frame is not None and len(frame):
-                    return True, frame
+                    return [True, frame]
