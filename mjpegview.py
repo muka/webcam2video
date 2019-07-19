@@ -19,7 +19,6 @@ if not args.url:
 def main():
 
     cap = mjpeg.MjpegDecoderAsync(args.url, max_frames=10, bytes_step=512)
-    cap.open()
     while cap.isOpened():
 
         ok, frame = cap.read()

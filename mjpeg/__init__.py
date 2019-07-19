@@ -36,7 +36,12 @@ class MjpegDecoderAsync:
         if not self.isOpened():
             self.thread = threading.Thread(
                 target=_read,
-                args=(self.queue, self.closed, self.url, self.bytes_step)
+                args=(
+                    self.queue,
+                    self.closed,
+                    self.url,
+                    self.bytes_step
+                )
             )
             self.thread.start()
 
@@ -55,11 +60,11 @@ class MjpegDecoderAsync:
 
 
 class MjpegDecoder:
-    def __init__(self, url, bytes_step=1024):
+    def __init__(self, url, bytes_step=None):
         self.url = url
         self.boundary = None
         self.stream = None
-        self.bytes_step = bytes_step
+        self.bytes_step = bytes_step if bytes_step is not None else 1024
         self.open()
 
     def isOpened(self):
@@ -80,9 +85,11 @@ class MjpegDecoder:
         self.stream = None
 
     def read(self):
+
         next = False
         bytes = b''
         start_boundary, end_boundary = self.boundaries
+
         while True:
 
             bytes += self.stream.read(self.bytes_step)
