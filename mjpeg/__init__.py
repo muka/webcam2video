@@ -5,13 +5,13 @@ import threading
 import queue
 
 
-def _read(queue, closed, url, bytes_step):
+def _read(q, closed, url, bytes_step):
     cap = MjpegDecoder(url, bytes_step)
     while cap.isOpened() and not closed.is_set():
         ok, frame = cap.read()
         if ok:
             try:
-                queue.put(frame, block=False)
+                q.put(frame, block=False)
             except queue.Full:
                 pass
 
